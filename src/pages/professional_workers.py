@@ -4,6 +4,7 @@ from dash import dcc, html, Input, Output, callback
 import plotly.express as px
 import plotly.colors
 import plotly.graph_objects as go
+import math
 
 # Register the page for Dash
 dash.register_page(__name__)
@@ -15,218 +16,180 @@ except Exception as e:
     print(f'File reading error: {str(e)}')
     exit()
 
-# Group the data by Degree category and calculate the average Job Satisfaction
-avg_job_satisfaction_degree = df.groupby('Degree')['Job Satisfaction'].mean().reset_index()
+# Assign age groups directly
+df['Age Group'] = df['Age']
 
-# Group by profession and calculate the average work pressure
-avg_work_pressure_profession = df.groupby('Profession')['Work Pressure'].mean().reset_index()
+# Define work pressure levels
+work_pressure_order = {"Low": 0, "Medium": 1, "High": 2}
+df['Work Pressure Level'] = df['Work Pressure'].apply(lambda x: 'Low' if x <= 1 else ('Medium' if x <= 3 else 'High'))
 
 # Convert 'Depression' column to numeric: 'Yes' = 1, 'No' = 0
 df['Depression_numeric'] = df['Depression'].apply(lambda x: 1 if x == 'Yes' else 0)
 
-# Average depression score by city (now as numeric)
-avg_depression_city = df.groupby('City')['Depression_numeric'].mean().reset_index()
-
-# Define approximate latitude and longitude for the cities (assumed coordinates)
-city_coords = {
-    'Ghaziabad': [28.6692, 77.4538],
-    'Kalyan': [19.2412, 73.1350],
-    'Bhopal': [23.2599, 77.4126],
-    'Thane': [19.2183, 72.9784],
-    'Indore': [22.7196, 75.8577],
-    'Pune': [18.5204, 73.8567],
-    'Bangalore': [12.9716, 77.5946],
-    'Hyderabad': [17.3850, 78.4867],
-    'Srinagar': [34.0836, 74.7973],
-    'Nashik': [19.9975, 73.7910],
-    'Kolkata': [22.5726, 88.3639],
-    'Ahmedabad': [23.0225, 72.5714],
-    'Varanasi': [25.3176, 82.9739],
-    'Chennai': [13.0827, 80.2707],
-    'Jaipur': [26.9124, 75.7873],
-    'Surat': [21.1702, 72.8311],
-    'Vasai-Virar': [19.3000, 72.8178],
-    'Patna': [25.5941, 85.1376],
-    'Rajkot': [22.3039, 70.8022],
-    'Lucknow': [26.8467, 80.9462],
-    'Meerut': [28.9845, 77.7050],
-    'Faridabad': [28.4089, 77.3133],
-    'Kanpur': [26.4499, 80.3319],
-    'Visakhapatnam': [17.6868, 83.2185],
-    'Ludhiana': [30.9000, 75.8500],
-    'Nagpur': [21.1458, 79.0882],
-    'Mumbai': [19.0760, 72.8777],
-    'Vadodara': [22.3072, 73.1812],
-    'Agra': [27.1767, 78.0081],
-    'Delhi': [28.6139, 77.2090]
-}
-
-# Merge the coordinates with the city depression data
-avg_depression_city['Lat'] = avg_depression_city['City'].map(lambda city: city_coords.get(city, [None, None])[0])
-avg_depression_city['Lon'] = avg_depression_city['City'].map(lambda city: city_coords.get(city, [None, None])[1])
-
 # Define a Bootstrap-like color palette from Plotly
 color_palette = plotly.colors.qualitative.Pastel
+age_order = {'Under 25': 0, '25-34': 1, '35-44': 2, '45-54': 3, '+55': 4}
+degree_order = {'Pre-University': 0, 'Undergraduate': 1, 'Postgraduate': 2, 'Doctorate/Professional': 3, 'Other': 4}
 
-# Layout with only the graphs for this page
+# Layout with dropdowns and graphs
 layout = html.Div([
+    # Dropdown to filter by age group
+    html.Label("Select Age Group:"),
+    dcc.Dropdown(
+        id='age-group-dropdown',
+        options=[{'label': age_group, 'value': age_group} for age_group in sorted(df['Age'].unique(), key=lambda x: age_order[x])],
+        value=None,
+        placeholder="Select an age group",
+        style={'marginBottom': '20px'}
+    ),
+
+    # Dropdown to filter by degree category
+    html.Label("Select Degree Category:"),
+    dcc.Dropdown(
+        id='degree-category-dropdown',
+        options=[{'label': degree, 'value': degree} for degree in sorted(df['Degree'].unique(), key=lambda x: degree_order[x])],
+        value=None,
+        placeholder="Select a degree category",
+        style={'marginBottom': '20px'}
+    ),
+
+    # Dropdown to filter by gender
+    html.Label("Select Gender:"),
+    dcc.Dropdown(
+        id='gender-dropdown',
+        options=[{'label': gender, 'value': gender} for gender in df['Gender'].unique()],
+        value=None,
+        placeholder="Select a gender",
+        style={'marginBottom': '20px'}
+    ),
+
+    # Dropdown to filter by work pressure level
+    html.Label("Select Work Pressure Level:"),
+    dcc.Dropdown(
+        id='work-pressure-dropdown',
+        options=[{'label': level, 'value': level} for level in work_pressure_order.keys()],
+        value=None,
+        placeholder="Select work pressure level",
+        style={'marginBottom': '20px'}
+    ),
+
     # First graph: Profession vs Work Pressure
-    dcc.Graph(
-        id='barplot-profession',
-        figure=px.bar(avg_work_pressure_profession, x='Profession', y='Work Pressure',
-                      title="Profession vs Average Work Pressure",
-                      template="minty",
-                      labels={'Profession': 'Profession', 'Work Pressure': 'Average Work Pressure'},
-                      color='Profession',  # Set color based on profession
-                      color_discrete_sequence=color_palette),  # Apply the custom color palette
-        clickData=None  # Initialize clickData as None
-    ),
-
+    dcc.Graph(id='barplot-profession'),
     html.Br(),
 
-    # Second graph: Job Satisfaction by Degree category
-    dcc.Graph(
-        id='barplot-degree',
-        figure=px.bar(avg_job_satisfaction_degree,
-                      x='Degree', y='Job Satisfaction',
-                      title="Job Satisfaction by Degree Category",
-                      template="minty",
-                      labels={'Degree': 'Degree Category', 'Job Satisfaction': 'Average Job Satisfaction'},
-                      color='Degree',  # Set color based on Degree category
-                      color_discrete_sequence=color_palette),  # Apply the custom color palette
-        clickData=None  # Initialize clickData as None
-    ),
-
-    html.Br(),
-
-    # Choropleth map for city depression levels
-    dcc.Graph(
-        id='city-depression-map',
-        figure=go.Figure(go.Choropleth(
-            z=avg_depression_city['Depression_numeric'],
-            hoverinfo='location+z',
-            locations=avg_depression_city['City'],
-            locationmode='country names',
-            colorscale='Viridis',
-            colorbar_title="Average Depression Level",
-            text=avg_depression_city['City'],
-            showscale=True
-        )),
-        config={'scrollZoom': False, 'displayModeBar': False}
-    ),
-
-    html.Br(),
-
-    # Pie chart for depression status
-    dcc.Graph(
-        id='depression-pie',
-        figure=go.Figure(
-            go.Pie(
-                labels=['Not Depressed', 'Depressed'],
-                values=[df['Depression_numeric'].value_counts().get(0, 0),
-                        df['Depression_numeric'].value_counts().get(1, 0)],
-                title="Depression Percentage",
-                hole=0.4,
-                marker=dict(colors=['lightgreen', 'lightcoral'])
-            )
-        )
-    )
+    # Pie chart for depression percentage
+    dcc.Graph(id='pie-depression', config={'displayModeBar': False}),
+    
+    # Bubble chart: Activity Hours vs Sleep Duration
+    dcc.Graph(id='bubble-activity-sleep')
 ])
 
-# Callback to update the graphs based on selection
+# Callback to update graphs based on selection
 @callback(
     [Output('barplot-profession', 'figure'),
-     Output('barplot-degree', 'figure'),
-     Output('city-depression-map', 'figure'),
-     Output('depression-pie', 'figure')],
-    [Input('barplot-profession', 'clickData'),
-     Input('barplot-degree', 'clickData')]
+     Output('pie-depression', 'figure'),
+     Output('bubble-activity-sleep', 'figure')],  # New output for bubble chart
+    [Input('age-group-dropdown', 'value'),
+     Input('degree-category-dropdown', 'value'),
+     Input('gender-dropdown', 'value'),
+     Input('work-pressure-dropdown', 'value'),
+     Input('barplot-profession', 'clickData')]  # Capture clickData for interaction
 )
-def update_graphs(profession_click, degree_click):
-    # If a profession bar is clicked
-    if profession_click is not None:
-        selected_profession = profession_click['points'][0]['x']
-        # Filter the data based on the selected profession
-        filtered_degree_data = df[df['Profession'] == selected_profession]
-        # Calculate the average Job Satisfaction by Degree for the selected profession
-        avg_job_satisfaction_filtered = filtered_degree_data.groupby('Degree')['Job Satisfaction'].mean().reset_index()
-
-        # Update the second graph (Degree vs Job Satisfaction)
-        degree_fig = px.bar(avg_job_satisfaction_filtered,
-                            x='Degree', y='Job Satisfaction',
-                            title=f"Job Satisfaction for {selected_profession}",
-                            template="minty",
-                            labels={'Degree': 'Degree Category', 'Job Satisfaction': 'Average Job Satisfaction'},
-                            color='Degree',
-                            color_discrete_sequence=color_palette)
-    else:
-        # Default graph when no bar is clicked
-        degree_fig = px.bar(avg_job_satisfaction_degree,
-                            x='Degree', y='Job Satisfaction',
-                            title="Job Satisfaction by Degree Category",
-                            template="minty",
-                            labels={'Degree': 'Degree Category', 'Job Satisfaction': 'Average Job Satisfaction'},
-                            color='Degree',
-                            color_discrete_sequence=color_palette)
-
-    # If a degree bar is clicked
-    if degree_click is not None:
-        selected_degree = degree_click['points'][0]['x']
-        # Filter the data based on the selected degree
-        filtered_profession_data = df[df['Degree'] == selected_degree]
-        # Calculate the average Work Pressure by Profession for the selected degree category
-        avg_work_pressure_filtered = filtered_profession_data.groupby('Profession')['Work Pressure'].mean().reset_index()
-
-        # Update the first graph (Profession vs Work Pressure)
-        profession_fig = px.bar(avg_work_pressure_filtered,
-                                x='Profession', y='Work Pressure',
-                                title=f"Profession vs Work Pressure for {selected_degree}",
-                                template="minty",
-                                labels={'Profession': 'Profession', 'Work Pressure': 'Average Work Pressure'},
-                                color='Profession',
-                                color_discrete_sequence=color_palette)
-    else:
-        # Default graph when no bar is clicked
-        profession_fig = px.bar(avg_work_pressure_profession,
-                                x='Profession', y='Work Pressure',
-                                title="Profession vs Average Work Pressure",
-                                template="minty",
-                                labels={'Profession': 'Profession', 'Work Pressure': 'Average Work Pressure'},
-                                color='Profession',
-                                color_discrete_sequence=color_palette)
-
-    # Update the choropleth map
-    map_fig = go.Figure(go.Choropleth(
-        z=avg_depression_city['Depression_numeric'],
-        hoverinfo='location+z',
-        locations=avg_depression_city['City'],
-        locationmode='country names',
-        colorscale='Viridis',
-        colorbar_title="Average Depression Level",
-        text=avg_depression_city['City'],
-        showscale=True
-    ))
-
-    # Update the pie chart (based on the filtered data)
+def update_graphs(selected_age_group, selected_degree_category, selected_gender, selected_work_pressure, click_data):
+    # Filter the data (this filter will apply to all charts)
     filtered_df = df
-    if profession_click is not None:
-        selected_profession = profession_click['points'][0]['x']
-        filtered_df = df[df['Profession'] == selected_profession]
-    if degree_click is not None:
-        selected_degree = degree_click['points'][0]['x']
-        filtered_df = df[df['Degree'] == selected_degree]
-        
-    depressed_count = filtered_df['Depression_numeric'].value_counts().get(1, 0)
-    not_depressed_count = filtered_df['Depression_numeric'].value_counts().get(0, 0)
-    
+    if selected_age_group:
+        filtered_df = filtered_df[filtered_df['Age Group'] == selected_age_group]
+    if selected_degree_category:
+        filtered_df = filtered_df[filtered_df['Degree'] == selected_degree_category]
+    if selected_gender:
+        filtered_df = filtered_df[filtered_df['Gender'] == selected_gender]
+    if selected_work_pressure:
+        filtered_df = filtered_df[filtered_df['Work Pressure Level'] == selected_work_pressure]
+
+    # Update bar chart (showing all professions)
+    profession_fig = px.bar(
+        filtered_df.groupby('Profession')['Work Pressure'].mean().reset_index(),
+        x='Profession', y='Work Pressure',
+        title="Profession vs Average Work Pressure",
+        template="minty",
+        labels={'Profession': 'Profession', 'Work Pressure': 'Average Work Pressure'},
+        color='Profession',
+        color_discrete_sequence=color_palette
+    )
+
+    # Filter pie chart based on the clicked profession (if any)
+    if click_data:
+        clicked_profession = click_data['points'][0]['x']
+        filtered_df = filtered_df[filtered_df['Profession'] == clicked_profession]
+
+    # Update pie chart based on filtered data
     pie_fig = go.Figure(
         go.Pie(
             labels=['Not Depressed', 'Depressed'],
-            values=[not_depressed_count, depressed_count],
-            title="Depression Percentage",
+            values=[filtered_df['Depression_numeric'].value_counts().get(0, 0),
+                    filtered_df['Depression_numeric'].value_counts().get(1, 0)],
             hole=0.4,
             marker=dict(colors=['lightgreen', 'lightcoral'])
         )
     )
 
-    return profession_fig, degree_fig, map_fig, pie_fig
+    # Now, let's create the bubble chart for Activity Hours vs Sleep Duration
+    # Calculate bubble sizes based on 'Work Pressure Level'
+    bubble_size = filtered_df['Work Pressure Level'].map({'Low': 30, 'Medium': 60, 'High': 90})  # Adjusted bubble size scaling
+
+    # Color the bubbles based on 'Work Pressure Level'
+    bubble_colors = filtered_df['Work Pressure Level'].map({'Low': 'lightgreen', 'Medium': 'orange', 'High': 'red'})  # Distinct colors for bubbles
+
+    # Create hover text for the bubble chart
+    hover_text_bubble = []
+    for index, row in filtered_df.iterrows():
+        hover_text_bubble.append(('Gender: {gender}<br>' +
+                                  'Age Group: {age_group}<br>' +
+                                  'Profession: {profession}<br>' +
+                                  'Degree: {degree}<br>' +
+                                  'City: {city}<br>' +
+                                  'Dietary Habits: {dietary_habits}<br>' +
+                                  'Sleep Duration: {sleep_duration}<br>' +
+                                  'Activity Hours: {activity_hours}<br>' +
+                                  'Depression: {depression}').format(
+            gender=row['Gender'],
+            age_group=row['Age Group'],
+            profession=row['Profession'],
+            degree=row['Degree'],
+            city=row['City'],
+            dietary_habits=row['Dietary Habits'],
+            sleep_duration=row['Sleep Duration'],
+            activity_hours=row['Activity Hours'],
+            depression=row['Depression']
+        ))
+
+    filtered_df['text_bubble'] = hover_text_bubble
+    sizeref = 2. * max(bubble_size) / (100**2)
+
+    bubble_fig = go.Figure()
+
+    bubble_fig.add_trace(go.Scatter(
+        x=filtered_df['Activity Hours'],
+        y=filtered_df['Sleep Duration'],
+        mode='markers',
+        text=filtered_df['text_bubble'],
+        marker=dict(
+            size=bubble_size,
+            color=bubble_colors,  # Apply colors to the bubbles
+            sizemode='area',
+            sizeref=sizeref,
+            line_width=2
+        )
+    ))
+
+    # Update the layout for the bubble chart
+    bubble_fig.update_layout(
+        title="Activity Hours vs Sleep Duration",
+        xaxis=dict(title='Activity Hours', gridcolor='white', gridwidth=2),
+        yaxis=dict(title='Sleep Duration (Hours)', gridcolor='white', gridwidth=2),
+        paper_bgcolor='rgb(243, 243, 243)',
+        plot_bgcolor='rgb(243, 243, 243)',
+    )
+
+    return profession_fig, pie_fig, bubble_fig
