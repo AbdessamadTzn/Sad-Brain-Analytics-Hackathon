@@ -80,15 +80,15 @@ layout = html.Div([
     # Pie chart for depression percentage
     dcc.Graph(id='pie-depression', config={'displayModeBar': False}),
     
-    # Bubble chart: Activity Hours vs Sleep Duration
-    dcc.Graph(id='bubble-activity-sleep')
+    # 3D Scatter plot: Activity Hours vs Sleep Duration vs Work Pressure
+    dcc.Graph(id='scatter-3d')
 ])
 
 # Callback to update graphs based on selection
 @callback(
     [Output('barplot-profession', 'figure'),
      Output('pie-depression', 'figure'),
-     Output('bubble-activity-sleep', 'figure')],  # New output for bubble chart
+     Output('scatter-3d', 'figure')],  # Updated output for 3D scatter plot
     [Input('age-group-dropdown', 'value'),
      Input('degree-category-dropdown', 'value'),
      Input('gender-dropdown', 'value'),
@@ -134,62 +134,18 @@ def update_graphs(selected_age_group, selected_degree_category, selected_gender,
         )
     )
 
-    # Now, let's create the bubble chart for Activity Hours vs Sleep Duration
-    # Calculate bubble sizes based on 'Work Pressure Level'
-    bubble_size = filtered_df['Work Pressure Level'].map({'Low': 30, 'Medium': 60, 'High': 90})  # Adjusted bubble size scaling
-
-    # Color the bubbles based on 'Work Pressure Level'
-    bubble_colors = filtered_df['Work Pressure Level'].map({'Low': 'lightgreen', 'Medium': 'orange', 'High': 'red'})  # Distinct colors for bubbles
-
-    # Create hover text for the bubble chart
-    hover_text_bubble = []
-    for index, row in filtered_df.iterrows():
-        hover_text_bubble.append(('Gender: {gender}<br>' +
-                                  'Age Group: {age_group}<br>' +
-                                  'Profession: {profession}<br>' +
-                                  'Degree: {degree}<br>' +
-                                  'City: {city}<br>' +
-                                  'Dietary Habits: {dietary_habits}<br>' +
-                                  'Sleep Duration: {sleep_duration}<br>' +
-                                  'Activity Hours: {activity_hours}<br>' +
-                                  'Depression: {depression}').format(
-            gender=row['Gender'],
-            age_group=row['Age Group'],
-            profession=row['Profession'],
-            degree=row['Degree'],
-            city=row['City'],
-            dietary_habits=row['Dietary Habits'],
-            sleep_duration=row['Sleep Duration'],
-            activity_hours=row['Activity Hours'],
-            depression=row['Depression']
-        ))
-
-    filtered_df['text_bubble'] = hover_text_bubble
-    sizeref = 2. * max(bubble_size) / (100**2)
-
-    bubble_fig = go.Figure()
-
-    bubble_fig.add_trace(go.Scatter(
-        x=filtered_df['Activity Hours'],
-        y=filtered_df['Sleep Duration'],
-        mode='markers',
-        text=filtered_df['text_bubble'],
-        marker=dict(
-            size=bubble_size,
-            color=bubble_colors,  # Apply colors to the bubbles
-            sizemode='area',
-            sizeref=sizeref,
-            line_width=2
-        )
-    ))
-
-    # Update the layout for the bubble chart
-    bubble_fig.update_layout(
-        title="Activity Hours vs Sleep Duration",
-        xaxis=dict(title='Activity Hours', gridcolor='white', gridwidth=2),
-        yaxis=dict(title='Sleep Duration (Hours)', gridcolor='white', gridwidth=2),
-        paper_bgcolor='rgb(243, 243, 243)',
-        plot_bgcolor='rgb(243, 243, 243)',
+    # Create 3D Scatter plot
+    scatter_3d_fig = px.scatter_3d(
+        filtered_df,
+        height=700,
+        width=1000,
+        x='Activity Hours',
+        y='Sleep Duration',
+        z='Work Pressure',
+        color='Work Pressure Level',
+        size='Work Pressure',
+        title="3D Scatter Plot: Activity Hours vs Sleep Duration vs Work Pressure",
+        opacity=0.8
     )
 
-    return profession_fig, pie_fig, bubble_fig
+    return profession_fig, pie_fig, scatter_3d_fig
