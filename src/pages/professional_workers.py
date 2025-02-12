@@ -4,7 +4,7 @@ from dash import dcc, html, Input, Output, callback
 import plotly.express as px
 import plotly.colors
 import plotly.graph_objects as go
-import math
+import numpy as np
 
 # Register the page for Dash
 dash.register_page(__name__)
@@ -81,14 +81,18 @@ layout = html.Div([
     dcc.Graph(id='pie-depression', config={'displayModeBar': False}),
     
     # 3D Scatter plot: Activity Hours vs Sleep Duration vs Work Pressure
-    dcc.Graph(id='scatter-3d')
+    dcc.Graph(id='scatter-3d'),
+
+    # Sunburst Chart: City, Dietary Habits, Sleep Duration, Work Pressure Level
+    dcc.Graph(id='sunburst-chart')
 ])
 
 # Callback to update graphs based on selection
 @callback(
     [Output('barplot-profession', 'figure'),
      Output('pie-depression', 'figure'),
-     Output('scatter-3d', 'figure')],  # Updated output for 3D scatter plot
+     Output('scatter-3d', 'figure'),
+     Output('sunburst-chart', 'figure')],  # Added output for Sunburst chart
     [Input('age-group-dropdown', 'value'),
      Input('degree-category-dropdown', 'value'),
      Input('gender-dropdown', 'value'),
@@ -148,4 +152,27 @@ def update_graphs(selected_age_group, selected_degree_category, selected_gender,
         opacity=0.8
     )
 
-    return profession_fig, pie_fig, scatter_3d_fig
+    # # Prepare data for sunburst chart
+    # agg_df = filtered_df.groupby(['City', 'Dietary Habits', 'Sleep Duration', 'Work Pressure Level']).agg(
+    #     count=('Depression_numeric', 'size'),
+    #     avg_depression=('Depression_numeric', 'mean')
+    # ).reset_index()
+
+    # Prepare data for sunburst chart
+    agg_df = filtered_df.groupby(['City', 'Dietary Habits', 'Sleep Duration', 'Work Pressure Level']).agg(
+        count=('Depression_numeric', 'size'),
+        percentage_depression=('Depression_numeric', lambda x: (x.sum() / len(x)) * 100)  # Calculate percentage
+    ).reset_index()
+
+    # Create Sunburst Chart
+    sunburst_fig = px.sunburst(
+        agg_df,
+        path=['City', 'Dietary Habits', 'Sleep Duration', 'Work Pressure Level'],  # Hierarchy
+        values='count',  # Number of individuals in each category
+        color='percentage_depression',  # Color by average depression rate
+        color_continuous_scale='RdBu',  # Red for high, blue for low depression
+        color_continuous_midpoint=np.average(agg_df['percentage_depression'], weights=agg_df['count']),
+        title="Sunburst Chart: City, Dietary Habits, Sleep, and Work Pressure with Depression Levels"
+    )
+
+    return profession_fig, pie_fig, scatter_3d_fig, sunburst_fig
