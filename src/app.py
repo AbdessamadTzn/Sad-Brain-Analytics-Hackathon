@@ -1,72 +1,50 @@
 import dash 
-from dash import dcc, html, Input, Output
+from dash import dcc, html, Input, Output, State
 import dash_bootstrap_components as dbc
 from dash_bootstrap_templates import load_figure_template
 import plotly.express as px
 
-'''
-For auth...TODO
-import dash_auth 
-USER_PASS_MAPPING = {
-    "ADMIN":"ADMIN",
-    "Developer":"Developer",
-    "User":"User"
-}
-'''
+# Load Bootstrap themes and Plotly templates
+THEMES = ["minty", "minty_dark"]
+load_figure_template(THEMES)
 
-# Load Bootstrap themes and plotly templates
-load_figure_template(["minty", "minty_dark"])
+px.defaults.template = "minty"  # Default to light mode
 
-px.defaults.template = "ggplot2"
-
-external_css = ["https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css"]
+# External CSS for Bootstrap and Icons
+external_css = [
+    "https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css",
+    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+]
 
 # Init Dash app
-app = dash.Dash(__name__, title='Sad Brain Analytical app', use_pages=True, external_stylesheets=external_css)
-
-# app.dash_auth(app, USER_PASS_MAPPING)
-
+app = dash.Dash(__name__, title='Sad Brain Analytics App', use_pages=True, external_stylesheets=external_css, requests_pathname_prefix="/")
 server = app.server
 
-# Layout for the app
-app.layout = html.Div(
-    [
-        # Main app header with navigation
-        html.Div([
-            html.H2("Sad Analytics App", className="text-dark text-center fw-bold fs-1", style={'font-size': 30}),
-            html.A("Pandemic Impact Monitor Report", href='https://abdessamadtouzani-portfolio.netlify.app/assets/pandemic_impact_exploring.html', target='_blank'),
-        ], style={
-            'text-align': 'center',
-            'padding': '20px',
-            'background-color': '#f8f9fa',
-            'border-bottom': '2px solid #cccccc',
-        }),
+# 🔹 Header Section
+header = html.Div([
+    html.H2("Sad Brain Analytics App 🧠", className="text-dark text-center fw-bold", style={'font-size': 30}),
+    html.P("Analyzing the impact of academic stress on mental health.", className="text-secondary text-center"),
+    print(dash.page_registry),
+    
+    # 🔹 Navigation Links (Horizontally Centered)
+    html.Div([
+        dcc.Link("🏠 Home", href="/", className="btn btn-dark m-2 fs-5"),
+        *[dcc.Link(f"📊 {page['name']}", href=page['path'], className="btn btn-outline-dark m-2 fs-5") for page in dash.page_registry.values()]
+    ], className="text-center"),
+    
+], style={
+    'text-align': 'center',
+    'padding': '20px',
+    'background': 'linear-gradient(90deg, #f8f9fa, #e9ecef)',
+    'border-bottom': '2px solid #cccccc',
+    'margin-bottom': '20px'
+})
 
-        # Navigation Links for pages
-        html.Div([
-            dcc.Link(page['name'], href=page['path'], className="btn btn-dark m-2 fs-5")
-            for page in dash.page_registry.values()
-        ], style={
-            'text-align': 'center',
-            'margin-top': '20px',
-        }),
+# 🔹 Main Content Area
+content = html.Div( dash.page_container, style={'padding': '20px'})
 
-        html.Br(),
-
-        # Content Area for individual pages (dash.page_container)
-        dash.page_container
-
-    ], style={
-        'width': '100%',
-        'margin-left': 'auto',
-        'margin-right': 'auto',
-        'margin-top': '50px',
-        'padding': '20px',
-        'border-radius': '10px',
-        'border': '1px solid #cccccc',
-        'position': 'relative',
-    }
-)
+# 🔹 App Layout (Stacked Layout)
+app.layout = html.Div([header, content])
 
 if __name__ == '__main__':
     app.run_server(debug=True)

@@ -154,7 +154,7 @@ def update_graphs(selected_age_group, selected_degree_category, selected_gender,
         values='count',  # Number of individuals in each category
         color='percentage_dietary_habits',  # Color by percentage of dietary habits
         color_continuous_scale='RdBu',  # Red for high, blue for low
-        title="Sunburst Chart: City, Dietary Habits, Sleep, and Work Pressure with Dietary Habit Percentages"
+        title="Work Pressure, Activity Hours, City with Dietary Habit Percentages"
     )
 
 
