@@ -4,7 +4,7 @@ from dash import dcc, html, Input, Output, callback
 import plotly.express as px
 import plotly.colors
 import plotly.graph_objects as go
-import numpy as np
+import math
 
 # Register the page for Dash
 dash.register_page(__name__)
@@ -33,66 +33,63 @@ degree_order = {'Pre-University': 0, 'Undergraduate': 1, 'Postgraduate': 2, 'Doc
 
 # Layout with dropdowns and graphs
 layout = html.Div([
-    # Dropdown to filter by age group
-    html.Label("Select Age Group:"),
-    dcc.Dropdown(
-        id='age-group-dropdown',
-        options=[{'label': age_group, 'value': age_group} for age_group in sorted(df['Age'].unique(), key=lambda x: age_order[x])],
-        value=None,
-        placeholder="Select an age group",
-        style={'marginBottom': '20px'}
-    ),
+    html.Div([
+        html.Label("Select Age Group:"),
+        dcc.Dropdown(
+            id='age-group-dropdown',
+            options=[{'label': age_group, 'value': age_group} for age_group in sorted(df['Age'].unique(), key=lambda x: age_order[x])],
+            value=None,
+            placeholder="Select an age group",
+            style={'marginBottom': '15px'}
+        ),
 
-    # Dropdown to filter by degree category
-    html.Label("Select Degree Category:"),
-    dcc.Dropdown(
-        id='degree-category-dropdown',
-        options=[{'label': degree, 'value': degree} for degree in sorted(df['Degree'].unique(), key=lambda x: degree_order[x])],
-        value=None,
-        placeholder="Select a degree category",
-        style={'marginBottom': '20px'}
-    ),
+        html.Label("Select Degree Category:"),
+        dcc.Dropdown(
+            id='degree-category-dropdown',
+            options=[{'label': degree, 'value': degree} for degree in sorted(df['Degree'].unique(), key=lambda x: degree_order[x])],
+            value=None,
+            placeholder="Select a degree category",
+            style={'marginBottom': '15px'}
+        ),
 
-    # Dropdown to filter by gender
-    html.Label("Select Gender:"),
-    dcc.Dropdown(
-        id='gender-dropdown',
-        options=[{'label': gender, 'value': gender} for gender in df['Gender'].unique()],
-        value=None,
-        placeholder="Select a gender",
-        style={'marginBottom': '20px'}
-    ),
+        html.Label("Select Gender:"),
+        dcc.Dropdown(
+            id='gender-dropdown',
+            options=[{'label': gender, 'value': gender} for gender in df['Gender'].unique()],
+            value=None,
+            placeholder="Select a gender",
+            style={'marginBottom': '15px'}
+        ),
 
-    # Dropdown to filter by work pressure level
-    html.Label("Select Work Pressure Level:"),
-    dcc.Dropdown(
-        id='work-pressure-dropdown',
-        options=[{'label': level, 'value': level} for level in work_pressure_order.keys()],
-        value=None,
-        placeholder="Select work pressure level",
-        style={'marginBottom': '20px'}
-    ),
+        html.Label("Select Work Pressure Level:"),
+        dcc.Dropdown(
+            id='work-pressure-dropdown',
+            options=[{'label': level, 'value': level} for level in work_pressure_order.keys()],
+            value=None,
+            placeholder="Select work pressure level",
+            style={'marginBottom': '15px'}
+        ),
+    ], style={'width': '20%', 'float': 'left', 'padding': '10px'}),
 
-    # First graph: Profession vs Work Pressure
-    dcc.Graph(id='barplot-profession'),
-    html.Br(),
+    html.Div([
+        html.Div([
+            dcc.Graph(id='barplot-profession', style={'height': '400px'}),
+            dcc.Graph(id='pie-depression', config={'displayModeBar': False}, style={'height': '400px'})
+        ], style={'display': 'flex', 'justifyContent': 'space-between'}),
 
-    # Pie chart for depression percentage
-    dcc.Graph(id='pie-depression', config={'displayModeBar': False}),
-    
-    # 3D Scatter plot: Activity Hours vs Sleep Duration vs Work Pressure
-    dcc.Graph(id='scatter-3d'),
-
-    # Sunburst Chart: City, Dietary Habits, Sleep Duration, Work Pressure Level
-    dcc.Graph(id='sunburst-chart')
+        html.Div([
+            dcc.Graph(id='sunburst-chart', style={'height': '400px'}),
+            dcc.Graph(id='animated-bar-chart', style={'height': '400px'})
+        ], style={'display': 'flex', 'justifyContent': 'space-between'})
+    ], style={'width': '80%', 'float': 'right', 'padding': '10px'})
 ])
 
 # Callback to update graphs based on selection
 @callback(
     [Output('barplot-profession', 'figure'),
      Output('pie-depression', 'figure'),
-     Output('scatter-3d', 'figure'),
-     Output('sunburst-chart', 'figure')],  # Added output for Sunburst chart
+     Output('sunburst-chart', 'figure'),
+     Output('animated-bar-chart', 'figure')],  # Added output for animated bar chart
     [Input('age-group-dropdown', 'value'),
      Input('degree-category-dropdown', 'value'),
      Input('gender-dropdown', 'value'),
@@ -138,41 +135,36 @@ def update_graphs(selected_age_group, selected_degree_category, selected_gender,
         )
     )
 
-    # Create 3D Scatter plot
-    scatter_3d_fig = px.scatter_3d(
-        filtered_df,
-        height=700,
-        width=1000,
-        x='Activity Hours',
-        y='Sleep Duration',
-        z='Work Pressure',
-        color='Work Pressure Level',
-        size='Work Pressure',
-        title="3D Scatter Plot: Activity Hours vs Sleep Duration vs Work Pressure",
-        opacity=0.8
-    )
-
-    # # Prepare data for sunburst chart
-    # agg_df = filtered_df.groupby(['City', 'Dietary Habits', 'Sleep Duration', 'Work Pressure Level']).agg(
-    #     count=('Depression_numeric', 'size'),
-    #     avg_depression=('Depression_numeric', 'mean')
-    # ).reset_index()
-
-    # Prepare data for sunburst chart
+    # Create Sunburst Chart
+    # Group by the necessary columns
     agg_df = filtered_df.groupby(['City', 'Dietary Habits', 'Sleep Duration', 'Work Pressure Level']).agg(
-        count=('Depression_numeric', 'size'),
-        percentage_depression=('Depression_numeric', lambda x: (x.sum() / len(x)) * 100)  # Calculate percentage
+        count=('Depression_numeric', 'size')
     ).reset_index()
+
+    # Calculate the total count for each combination of 'City', 'Sleep Duration', and 'Work Pressure Level'
+    agg_df['total_count'] = agg_df.groupby(['City', 'Sleep Duration', 'Work Pressure Level'])['count'].transform('sum')
+
+    # Now, calculate the percentage of each dietary habit group
+    agg_df['percentage_dietary_habits'] = (agg_df['count'] / agg_df['total_count']) * 100
 
     # Create Sunburst Chart
     sunburst_fig = px.sunburst(
         agg_df,
-        path=['City', 'Dietary Habits', 'Sleep Duration', 'Work Pressure Level'],  # Hierarchy
+        path=['Work Pressure Level', 'Sleep Duration', 'City', 'Dietary Habits'],  # Hierarchy
         values='count',  # Number of individuals in each category
-        color='percentage_depression',  # Color by average depression rate
-        color_continuous_scale='RdBu',  # Red for high, blue for low depression
-        color_continuous_midpoint=np.average(agg_df['percentage_depression'], weights=agg_df['count']),
-        title="Sunburst Chart: City, Dietary Habits, Sleep, and Work Pressure with Depression Levels"
+        color='percentage_dietary_habits',  # Color by percentage of dietary habits
+        color_continuous_scale='RdBu',  # Red for high, blue for low
+        title="Sunburst Chart: City, Dietary Habits, Sleep, and Work Pressure with Dietary Habit Percentages"
     )
 
-    return profession_fig, pie_fig, scatter_3d_fig, sunburst_fig
+
+    # Create Animated Bar Chart
+    animated_bar_fig = px.bar(
+        df.groupby(['Gender', 'City'], as_index=False)['Financial Stress'].mean(),
+        x="Gender", y="Financial Stress", color="City",
+        title="Average Financial Stress by Gender and City",
+        labels={"Financial Stress": "Avg Financial Stress"},
+        barmode="group"
+    )
+    
+    return profession_fig, pie_fig, sunburst_fig, animated_bar_fig
