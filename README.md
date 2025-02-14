@@ -1,4 +1,4 @@
-## **Sad Brain Analytics Hackathon 2 **  
+## **Sad Brain Analytics Hackathon 2**  
 ### **MD4 Hackathon - Mental Health Prediction** 
 #### *By Marine PROST*
 
