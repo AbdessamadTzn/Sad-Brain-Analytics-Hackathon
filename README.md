@@ -9,4 +9,5 @@ Our project focuses on analyzing mental health factors among professionals and s
 - **[Hamza El Mortada](https://github.com/weldhammadi)** 
 - **[Koceila Lemdani](https://github.com/dondeestakoko)** 
 
-🔗 **View Dashboard [Here](https://sad-brain-analytics.onrender.com/professional-workers)** 
+🔗 **View Dashboard [Here](https://sad-brain-analytics.onrender.com/professional-workers)** <br>
+🔗 **Check Project Backlog [Here](https://github.com/users/AbdessamadTzn/projects/9)** 
